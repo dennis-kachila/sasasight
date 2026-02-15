@@ -1,0 +1,40 @@
+# Netlify Configuration for SasaSight Monorepo
+[build]
+  # Build from apps/web directory
+  base = "apps/web"
+  # Next.js build command
+  command = "npm run build"
+  # Next.js output directory
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
+# Production environment
+[context.production]
+  [context.production.environment]
+    NEXT_PUBLIC_API_URL = "YOUR_API_URL_HERE"
+    NODE_ENV = "production"
+
+# Preview/staging environment
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    NEXT_PUBLIC_API_URL = "http://localhost:8000"
+
+# Branch deployments
+[context.branch-deploy]
+  [context.branch-deploy.environment]
+    NEXT_PUBLIC_API_URL = "http://localhost:8000"
+
+# Rewrite rules for Next.js routing
+[[rewrites]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Fallback for client-side routing
+[[rewrites]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
