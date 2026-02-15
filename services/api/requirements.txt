@@ -11,6 +11,6 @@ numpy==2.4.2
 sqlalchemy==2.0.46
 psycopg2-binary==2.9.9
 bcrypt==4.1.1
-PyJWT==2.8.1
+PyJWT==2.11.0
 alembic==1.13.0
 pytesseract==0.3.13
