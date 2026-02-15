@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web/src:/app/src
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./sasasight.db
+      - STORAGE_PATH=/storage
+    volumes:
+      - ./services/api/storage:/storage
+      - ./services/api/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --reload
+
+volumes:
+  api_storage:

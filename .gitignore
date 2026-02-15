@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+
+# Python
+*.pyc
+*.pyo
+dist/
+build/
+*.egg-info
+
+# Storage
+/services/api/storage/*
+!/services/api/storage/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.pytest_cache/
+
+# Build output
+public/
+.turbo/
