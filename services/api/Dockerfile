@@ -2,10 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (including OpenCV dependencies)
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    libxcb1 \
+    libx11-6 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libtesseract4 \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
