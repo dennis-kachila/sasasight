@@ -1,8 +1,7 @@
 # Netlify Configuration for SasaSight Next.js App
 [build]
-  base = "apps/web"
-  command = "npm run build"
-  # Don't set publish - Netlify auto-handles Next.js output
+  command = "cd apps/web && npm install && npm run build"
+  publish = "apps/web/.next"
 
 [build.environment]
   NODE_VERSION = "20"
