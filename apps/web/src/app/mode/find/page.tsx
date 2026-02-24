@@ -211,6 +211,7 @@ export default function FindModePage() {
                   width={640}
                   height={480}
                   facingMode="environment"
+                  captureFps={10}
                 />
 
                 {/* Display all detected labels as small boxes */}

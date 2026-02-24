@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { OCRWord } from './useOCR'
 import {
   detectComponentsFromVideo,
@@ -43,6 +43,10 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
   const historyRef = useRef<(DetectedComponent | null)[]>([])
   const [matchedComponent, setMatchedComponent] = useState<DetectedComponent | null>(null)
   const [mlDetections, setMlDetections] = useState<ComponentDetection[]>([])
+
+  const normalizeText = useCallback((value: string) => {
+    return value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  }, [])
 
   // Levenshtein distance for fuzzy matching
   const calculateLevenshtein = useCallback((str1: string, str2: string): number => {
@@ -90,6 +94,7 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
       return null
     }
 
+    const normalizedQuery = normalizeText(searchQuery)
     let bestMatch: DetectedComponent | null = null
     let bestSimilarity = 0
 
@@ -97,7 +102,10 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
     ocrWords.forEach((word) => {
       if (word.confidence < confidenceThreshold) return
 
-      const similarity = calculateSimilarity(word.text, searchQuery)
+      const candidate = normalizeText(word.text)
+      if (!candidate) return
+
+      const similarity = calculateSimilarity(candidate, normalizedQuery)
 
       // Consider both exact matches and close fuzzy matches
       if (similarity > bestSimilarity) {
@@ -112,7 +120,7 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
     })
 
     return bestMatch
-  }, [searchQuery, ocrWords, confidenceThreshold, calculateSimilarity])
+  }, [searchQuery, ocrWords, confidenceThreshold, calculateSimilarity, normalizeText])
 
   // Apply temporal smoothing to reduce flickering
   const getSmoothedResult = useCallback((): DetectedComponent | null => {
@@ -160,17 +168,19 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
 
   // Get nearby components for the UI
   const getNearbyComponents = useCallback((): DetectedComponent[] => {
+    const normalizedQuery = normalizeText(searchQuery)
+
     return ocrWords
       .filter((word) => word.confidence >= confidenceThreshold)
       .map((word) => ({
         label: word.text,
         confidence: word.confidence,
         bbox: word.bbox,
-        isMatch: calculateSimilarity(word.text, searchQuery) > 0.7,
+        isMatch: calculateSimilarity(normalizeText(word.text), normalizedQuery) > 0.7,
       }))
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 10) // Top 10 nearby components
-  }, [ocrWords, confidenceThreshold, searchQuery, calculateSimilarity])
+  }, [ocrWords, confidenceThreshold, searchQuery, calculateSimilarity, normalizeText])
 
   // ML-based detection from video frame
   const detectFromVideoML = useCallback(async (video: HTMLVideoElement) => {
@@ -200,14 +210,17 @@ export function useComponentDetection(options: ComponentDetectionOptions) {
     [mlDetections]
   )
 
-  const smoothedComponent = getSmoothedResult()
-  if (smoothedComponent && matchedComponent !== smoothedComponent) {
+  const smoothedComponent = useMemo(() => getSmoothedResult(), [getSmoothedResult])
+
+  useEffect(() => {
     setMatchedComponent(smoothedComponent)
-  }
+  }, [smoothedComponent])
+
+  const nearbyComponents = useMemo(() => getNearbyComponents(), [getNearbyComponents])
 
   return {
     matchedComponent,
-    nearbyComponents: getNearbyComponents(),
+    nearbyComponents,
     mlDetections,
     detectFromVideoML,
     detectFromCanvasML,

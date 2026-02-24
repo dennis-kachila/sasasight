@@ -8,6 +8,7 @@ interface CameraViewProps {
   width?: number
   height?: number
   facingMode?: 'user' | 'environment'
+  captureFps?: number
 }
 
 export function CameraView({
@@ -16,13 +17,25 @@ export function CameraView({
   width = 640,
   height = 480,
   facingMode = 'environment',
+  captureFps = 12,
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationRef = useRef<number | null>(null)
+  const onFrameRef = useRef<typeof onFrame>(onFrame)
+  const onErrorRef = useRef<typeof onError>(onError)
+  const lastEmitTimeRef = useRef(0)
   const [isActive, setIsActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    onFrameRef.current = onFrame
+  }, [onFrame])
+
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
 
   useEffect(() => {
     // Early return if not on client
@@ -53,9 +66,17 @@ export function CameraView({
           const captureFrame = () => {
             if (videoRef.current && canvasRef.current) {
               const ctx = canvasRef.current.getContext('2d')
-              if (ctx) {
+              const now = performance.now()
+              const minInterval = 1000 / Math.max(captureFps, 1)
+
+              if (
+                ctx &&
+                videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+                now - lastEmitTimeRef.current >= minInterval
+              ) {
                 ctx.drawImage(videoRef.current, 0, 0, width, height)
-                onFrame?.(canvasRef.current)
+                onFrameRef.current?.(canvasRef.current)
+                lastEmitTimeRef.current = now
               }
             }
             animationRef.current = requestAnimationFrame(captureFrame)
@@ -66,7 +87,7 @@ export function CameraView({
         const error = err instanceof Error ? err : new Error(String(err))
         console.error('Camera error:', error.message)
         setError(error.message)
-        onError?.(error)
+        onErrorRef.current?.(error)
       }
     }
 
@@ -80,7 +101,7 @@ export function CameraView({
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
-  }, [facingMode, height, onError, onFrame, width])
+  }, [facingMode, height, width, captureFps])
 
   const toggleTorch = async () => {
     if (!streamRef.current) return

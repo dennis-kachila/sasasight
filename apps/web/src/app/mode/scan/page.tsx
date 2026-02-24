@@ -50,6 +50,10 @@ export default function ScanModePage() {
     back: new BoardStitcher(),
   })
   const frameCounterRef = useRef({ front: 0, back: 0 })
+  const scanStateRef = useRef(scanState)
+  const lastCaptureTsRef = useRef({ front: 0, back: 0 })
+
+  scanStateRef.current = scanState
 
   const startScan = (side: 'front' | 'back') => {
     setScanState({
@@ -64,6 +68,7 @@ export default function ScanModePage() {
       cameraError: undefined,
     })
     frameCounterRef.current[side] = 0
+    lastCaptureTsRef.current[side] = 0
   }
 
   const handleCameraError = (error: Error) => {
@@ -113,18 +118,31 @@ export default function ScanModePage() {
 
   const handleFrameCapture = useCallback(
     (canvas: HTMLCanvasElement) => {
-      if (!scanState.isScanning || !scanState.side) return
+      const current = scanStateRef.current
+      if (!current.isScanning || !current.side) return
 
-      const side = scanState.side // Narrow the type
+      const side = current.side
+      const now = Date.now()
+      if (now - lastCaptureTsRef.current[side] < 250) return
+      lastCaptureTsRef.current[side] = now
+
       const frameIndex = frameCounterRef.current[side]
       const frameId = `${side}-${frameIndex}`
+
+      const frameCanvas = document.createElement('canvas')
+      frameCanvas.width = canvas.width
+      frameCanvas.height = canvas.height
+      const frameCtx = frameCanvas.getContext('2d')
+      if (!frameCtx) return
+      frameCtx.drawImage(canvas, 0, 0)
+      const frameImageData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height)
 
       const stitchFrame: StitchFrame = {
         id: frameId,
         index: frameIndex,
-        canvas: canvas.cloneNode(true) as HTMLCanvasElement,
-        imageData: canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height),
-        timestamp: Date.now(),
+        canvas: frameCanvas,
+        imageData: frameImageData,
+        timestamp: now,
         quality: 0.85 + Math.random() * 0.15,
       }
 
@@ -134,7 +152,7 @@ export default function ScanModePage() {
       setScanState((prev) => ({
         ...prev,
         framesCollected: frameCounterRef.current[side],
-        progress: Math.min(prev.progress + 2, 95),
+        progress: Math.min(prev.progress + 1, 95),
         stitchQuality: stitchersRef.current[side].getQuality(),
         boardIdDetected:
           prev.boardIdDetected ||
@@ -142,7 +160,7 @@ export default function ScanModePage() {
         boardIdConfidence: Math.random() * 0.3 + 0.7,
       }))
     },
-    [scanState.isScanning, scanState.side]
+    []
   )
 
   const confirmBoardId = () => {
@@ -395,6 +413,7 @@ export default function ScanModePage() {
                     width={640}
                     height={480}
                     facingMode="environment"
+                    captureFps={8}
                   />
 
                   <div className="absolute top-4 left-4 right-4 bg-black bg-opacity-50 p-4 rounded-lg">
