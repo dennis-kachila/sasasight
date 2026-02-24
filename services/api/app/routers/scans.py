@@ -36,7 +36,8 @@ async def upload_scan(
     stitched_image: Optional[UploadFile] = File(None),
     coverage_percentage: float = Form(default=0.0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(lambda: None),
+    authorization: Optional[str] = None,
 ) -> dict:
     """
     Upload scanned frames and create a scan session
@@ -54,6 +55,33 @@ async def upload_scan(
     - scan_session: Full scan metadata
     - status: "success" or "error"
     """
+    
+    # Handle authentication - try to get current user, fallback to guest if not provided
+    if not current_user:
+        try:
+            if authorization:
+                from app.auth import verify_access_token
+                scheme, token = authorization.split()
+                if scheme.lower() == "bearer":
+                    payload = verify_access_token(token)
+                    user_id = payload.get("sub")
+                    if user_id:
+                        current_user = db.query(User).filter(User.id == user_id).first()
+        except Exception:
+            pass  # Fallback to guest
+        
+        # Create temporary guest user session for unauthenticated uploads
+        if not current_user:
+            guest_id = f"guest_{uuid.uuid4().hex[:8]}"
+            guest_user = User(
+                id=guest_id,
+                username=f"guest_{uuid.uuid4().hex[:8]}",
+                email=f"guest_{uuid.uuid4().hex[:8]}@localhost",
+                is_active=True
+            )
+            db.add(guest_user)
+            db.commit()
+            current_user = guest_user
     
     # Validate input
     if side not in ["front", "back"]:

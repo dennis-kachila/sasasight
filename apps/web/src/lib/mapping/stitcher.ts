@@ -69,8 +69,8 @@ export class BoardStitcher {
       }
     }
 
-    // Require minimum correlation confidence
-    if (bestScore < 0.5) return null
+    // Lower threshold to be more aggressive about detecting overlaps (was 0.5, now 0.3)
+    if (bestScore < 0.3) return null
 
     return {
       frame1Id: frame1.id,
@@ -141,30 +141,40 @@ export class BoardStitcher {
     xOffset: number,
     yOffset: number
   ): void {
-    // Draw first frame
+    // Draw first frame with full opacity
     ctx.globalAlpha = 1.0
     ctx.drawImage(frame1, xOffset, yOffset)
 
-    // Draw second frame with alpha blend in overlap region
+    // For overlap region, use a smoother blend
     const overlapX = xOffset + overlap.x
     const overlapY = yOffset + overlap.y
     const blendWidth = overlap.width
 
-    // Draw frame2 with gradient alpha for smooth blending
+    // Save context state
     ctx.save()
-    ctx.globalAlpha = 0.5
 
-    // Create gradient mask for smooth transition
+    // Create clipping region for overlap
+    ctx.beginPath()
+    ctx.rect(overlapX, overlapY, blendWidth, overlap.height)
+    ctx.clip()
+
+    // Draw second frame at the overlap position with linear alpha fade
+    ctx.globalAlpha = 1.0
+
+    // Calculate how much of frame2 to draw (accounting for overlap)
+    const frame2DrawX = xOffset + frame1.width - overlap.width
+    ctx.drawImage(frame2, frame2DrawX, yOffset)
+
+    // Apply horizontal gradient alpha mask for smooth blending
     const gradient = ctx.createLinearGradient(overlapX, 0, overlapX + blendWidth, 0)
-    gradient.addColorStop(0, 'rgba(0,0,0,0.3)')
+    gradient.addColorStop(0, 'rgba(0,0,0,1)')
+    gradient.addColorStop(0.3, 'rgba(0,0,0,0.7)')
+    gradient.addColorStop(0.7, 'rgba(0,0,0,0.3)')
     gradient.addColorStop(1, 'rgba(0,0,0,0)')
 
+    ctx.globalCompositeOperation = 'destination-in'
     ctx.fillStyle = gradient
     ctx.fillRect(overlapX, overlapY, blendWidth, overlap.height)
-
-    // Draw second frame
-    ctx.globalAlpha = 0.7
-    ctx.drawImage(frame2, xOffset + frame1.width - overlap.width, yOffset + overlap.y)
 
     ctx.restore()
   }
@@ -210,10 +220,14 @@ export class BoardStitcher {
     composition.width = totalWidth + padding * 2
     composition.height = maxHeight + padding * 2
 
-    const ctx = composition.getContext('2d')
+    const ctx = composition.getContext('2d', { alpha: false })
     if (!ctx) {
       throw new Error('Failed to get canvas context')
     }
+
+    // Enable high-quality rendering
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
 
     // Fill with white background
     ctx.fillStyle = 'white'

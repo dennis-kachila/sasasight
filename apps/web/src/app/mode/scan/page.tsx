@@ -116,6 +116,14 @@ export default function ScanModePage() {
     }
   }, [scanState.side])
 
+  const pauseScan = useCallback(() => {
+    setScanState((prev) => ({
+      ...prev,
+      isScanning: false,
+      status: 'idle',
+    }))
+  }, [])
+
   const handleFrameCapture = useCallback(
     (canvas: HTMLCanvasElement) => {
       const current = scanStateRef.current
@@ -194,13 +202,13 @@ export default function ScanModePage() {
       const frontBlob = await new Promise<Blob>((resolve) => {
         capturedFrames.front!.toBlob((blob) => {
           resolve(blob!)
-        }, 'image/jpeg', 0.9)
+        }, 'image/jpeg', 0.95)
       })
 
       const backBlob = await new Promise<Blob>((resolve) => {
         capturedFrames.back!.toBlob((blob) => {
           resolve(blob!)
-        }, 'image/jpeg', 0.9)
+        }, 'image/jpeg', 0.95)
       })
 
       const formData = new FormData()
@@ -256,9 +264,9 @@ export default function ScanModePage() {
     return (
       <div className="relative inline-block">
         <img
-          src={canvas.toDataURL('image/jpeg')}
+          src={canvas.toDataURL('image/jpeg', 0.95)}
           alt={`${side} side stitched`}
-          className="bg-gray-800 rounded border-2 border-cyan-500 max-w-sm"
+          className="bg-gray-800 rounded border-2 border-cyan-500 max-w-sm w-full h-auto"
         />
         <div className="absolute inset-0 rounded bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 opacity-20 pointer-events-none" />
       </div>
@@ -330,9 +338,14 @@ export default function ScanModePage() {
                           <p className="text-xs text-gray-400">
                             {scanState.framesCollected} frames • Quality: {(scanState.stitchQuality * 100).toFixed(0)}%
                           </p>
-                          <button onClick={stopScan} className="w-full btn-secondary text-sm">
-                            Stop Scanning
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={pauseScan} className="flex-1 btn-secondary text-sm">
+                              Pause
+                            </button>
+                            <button onClick={stopScan} className="flex-1 btn-secondary text-sm">
+                              Stop & Stitch
+                            </button>
+                          </div>
                         </div>
                       ) : capturedFrames[side] ? (
                         <p className="text-xs text-green-400 mt-2">✓ Scanned</p>
@@ -388,13 +401,27 @@ export default function ScanModePage() {
               )}
 
               {boardIdConfirmed && capturedFrames.front && capturedFrames.back && (
-                <button
-                  onClick={saveScan}
-                  disabled={scanState.status === 'uploading'}
-                  className="w-full btn-primary py-3 font-semibold disabled:opacity-50"
-                >
-                  {scanState.status === 'uploading' ? '⏳ Uploading...' : '💾 Save Scan'}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={saveScan}
+                    disabled={scanState.status === 'uploading'}
+                    className="w-full btn-primary py-3 font-semibold disabled:opacity-50"
+                  >
+                    {scanState.status === 'uploading' ? '⏳ Uploading...' : '💾 Save Scan to Cloud'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const frontUrl = capturedFrames.front!.toDataURL('image/jpeg')
+                      const backUrl = capturedFrames.back!.toDataURL('image/jpeg')
+                      router.push(
+                        `/mode/study?frontImage=${encodeURIComponent(frontUrl)}&backImage=${encodeURIComponent(backUrl)}&boardId=${scanState.boardIdDetected}`
+                      )
+                    }}
+                    className="w-full btn-secondary py-3 font-semibold"
+                  >
+                    📝 Annotate in Study Mode
+                  </button>
+                </div>
               )}
 
               {scanState.status === 'error' && (

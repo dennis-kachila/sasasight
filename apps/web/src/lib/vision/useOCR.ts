@@ -20,6 +20,10 @@ interface UseOCROptions {
   throttle?: number // milliseconds between OCR runs
 }
 
+/**
+ * useOCR Hook - Uses Tesseract.js Worker Pool for efficient, non-blocking OCR
+ * Tesseract.js automatically uses Web Workers to avoid blocking the main thread
+ */
 export function useOCR(options: UseOCROptions = {}) {
   const {
     enabled = true,
@@ -32,34 +36,57 @@ export function useOCR(options: UseOCROptions = {}) {
   const [error, setError] = useState<string | null>(null)
   const workerRef = useRef<Tesseract.Worker | null>(null)
   const lastProcessTimeRef = useRef(0)
+  const initPromiseRef = useRef<Promise<void> | null>(null)
 
-  // Initialize Tesseract worker
-  useEffect(() => {
-    const initWorker = async () => {
+  // Initialize Tesseract worker (lazy initialization)
+  const initWorker = useCallback(async () => {
+    if (initPromiseRef.current) return initPromiseRef.current
+    if (workerRef.current) return
+
+    const promise = (async () => {
       try {
+        // Tesseract.createWorker() automatically uses Web Workers
         const worker = await Tesseract.createWorker() as any
         await worker.loadLanguage?.(language)
         await worker.initialize?.(language)
         workerRef.current = worker
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize OCR')
+        throw err
       }
-    }
+    })()
 
-    if (enabled) {
-      initWorker()
+    initPromiseRef.current = promise
+    return promise
+  }, [language])
+
+  // Setup and cleanup
+  useEffect(() => {
+    if (!enabled) return
+
+    if (typeof window !== 'undefined') {
+      // Initialize worker when hook mounts
+      initWorker().catch((err) => {
+        console.error('Failed to initialize OCR worker:', err)
+      })
     }
 
     return () => {
       if (workerRef.current) {
-        workerRef.current.terminate()
+        try {
+          workerRef.current.terminate()
+        } catch (e) {
+          // Ignore termination errors
+        }
+        workerRef.current = null
+        initPromiseRef.current = null
       }
     }
-  }, [enabled, language])
+  }, [enabled, initWorker])
 
   const processFrame = useCallback(
     async (canvas: HTMLCanvasElement) => {
-      if (!enabled || !workerRef.current || isProcessing) return
+      if (!enabled || isProcessing) return
 
       // Throttle OCR processing
       const now = Date.now()
@@ -72,13 +99,24 @@ export function useOCR(options: UseOCROptions = {}) {
         setIsProcessing(true)
         setError(null)
 
+        // Ensure worker is initialized
+        if (!workerRef.current) {
+          await initWorker()
+        }
+
+        if (!workerRef.current) {
+          throw new Error('OCR worker not available')
+        }
+
+        // Tesseract.js runs recognition in a Web Worker automatically
+        // This doesn't block the main thread
         const result = await workerRef.current.recognize(canvas)
         const { data } = result
 
         // Extract words with confidence and bounding boxes
         const extractedWords: OCRWord[] = []
         if (data.words) {
-          data.words.forEach((word) => {
+          data.words.forEach((word: any) => {
             if (word.confidence > 0) {
               extractedWords.push({
                 text: word.text,
@@ -101,7 +139,7 @@ export function useOCR(options: UseOCROptions = {}) {
         setIsProcessing(false)
       }
     },
-    [enabled, isProcessing, throttle]
+    [enabled, isProcessing, throttle, initWorker]
   )
 
   return {
