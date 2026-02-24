@@ -16,6 +16,21 @@ STORAGE_PATH = os.getenv("STORAGE_PATH", "./storage")
 os.makedirs(STORAGE_PATH, exist_ok=True)
 
 
+def resolve_upload_path(filename: str) -> str:
+    primary_path = os.path.join(STORAGE_PATH, filename)
+    if os.path.exists(primary_path) and os.path.isfile(primary_path):
+        return primary_path
+
+    bundled_storage_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "storage")
+    )
+    fallback_path = os.path.join(bundled_storage_path, filename)
+    if os.path.exists(fallback_path) and os.path.isfile(fallback_path):
+        return fallback_path
+
+    return primary_path
+
+
 @router.post("/uploads/image")
 async def upload_image(
     file: UploadFile = File(...),
@@ -72,7 +87,7 @@ async def serve_upload(filename: str):
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     
-    filepath = os.path.join(STORAGE_PATH, filename)
+    filepath = resolve_upload_path(filename)
     
     # Check if file exists
     if not os.path.exists(filepath) or not os.path.isfile(filepath):
