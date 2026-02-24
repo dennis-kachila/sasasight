@@ -28,6 +28,13 @@ def resolve_upload_path(filename: str) -> str:
     if os.path.exists(fallback_path) and os.path.isfile(fallback_path):
         return fallback_path
 
+    tracked_samples_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "sample_images")
+    )
+    tracked_sample_file = os.path.join(tracked_samples_path, filename)
+    if os.path.exists(tracked_sample_file) and os.path.isfile(tracked_sample_file):
+        return tracked_sample_file
+
     return primary_path
 
 
