@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { apiClient } from '@/lib/api/client'
 
+// Disable static generation for this page since it uses sessionStorage
+export const dynamic = 'force-dynamic'
+
 type ToolType = 'pen' | 'arrow' | 'rect' | 'circle' | 'text' | 'eraser' | 'select'
 
 interface DrawingState {
@@ -49,6 +52,7 @@ export default function StudyModePage() {
   })
   const [sampleBoards, setSampleBoards] = useState<SampleBoard[]>([])
   const [selectedBoardId, setSelectedBoardId] = useState<string>('')
+  const [scanImages, setScanImages] = useState<{ front?: string; back?: string; boardId?: string } | null>(null)
   const [imageLoading, setImageLoading] = useState(false)
   const [annotations, setAnnotations] = useState<any[]>([])
   const [currentStroke, setCurrentStroke] = useState<any>(null)
@@ -179,6 +183,26 @@ export default function StudyModePage() {
     return () => clearInterval(autoSaveInterval)
   }, [selectedBoardId, boardSide])
 
+  // Load scanned images from sessionStorage if coming from Scan mode
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check if we have scanned images in sessionStorage
+      const frontImage = sessionStorage.getItem('scanFrontImage')
+      const backImage = sessionStorage.getItem('scanBackImage')
+      const boardId = sessionStorage.getItem('scanBoardId')
+      
+      if (frontImage || backImage) {
+        setScanImages({ front: frontImage || undefined, back: backImage || undefined, boardId: boardId || undefined })
+        // Set a temporary board ID for the scanned images
+        setSelectedBoardId(`scan-${boardId || Date.now()}`)
+        // Clean up sessionStorage
+        sessionStorage.removeItem('scanFrontImage')
+        sessionStorage.removeItem('scanBackImage')
+        sessionStorage.removeItem('scanBoardId')
+      }
+    }
+  }, [])
+
   // Load sample boards on mount
   useEffect(() => {
     const loadSampleBoards = async () => {
@@ -245,8 +269,10 @@ export default function StudyModePage() {
 
   // Load selected board image on canvas
   useEffect(() => {
-    const selectedBoard = sampleBoards.find((b) => b.id === selectedBoardId)
-    if (!selectedBoard) return
+    const isScanBoard = scanImages && selectedBoardId.startsWith('scan-')
+    const selectedBoard = !isScanBoard ? sampleBoards.find((b) => b.id === selectedBoardId) : null
+    
+    if (!selectedBoard && !isScanBoard) return
 
     setImageLoading(true)
     const canvas = canvasRef.current
@@ -294,7 +320,7 @@ export default function StudyModePage() {
       })
     }
     img.onerror = () => {
-      console.error('Failed to load image:', selectedBoard.imageUrl)
+      console.error('Failed to load image:', isScanBoard ? 'scanned image' : selectedBoard?.imageUrl)
       setImageLoading(false)
       // Draw error placeholder
       ctx.fillStyle = '#1a1a1a'
@@ -303,13 +329,22 @@ export default function StudyModePage() {
       ctx.font = '16px Arial'
       ctx.fillText('Failed to load image', 20, 30)
     }
-    // Construct full URL with API base URL
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const fullUrl = selectedBoard.imageUrl.startsWith('http')
-      ? selectedBoard.imageUrl
-      : `${apiBaseUrl}${selectedBoard.imageUrl}`
-    img.src = fullUrl
-  }, [selectedBoardId, sampleBoards, layers.baseImageShown])
+    
+    // Determine image source
+    let imageUrl = ''
+    if (isScanBoard) {
+      // Use scanned image (front or back)
+      imageUrl = boardSide === 'back' && scanImages?.back ? scanImages.back : scanImages?.front || ''
+    } else {
+      // Use sample board image
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      imageUrl = selectedBoard!.imageUrl.startsWith('http')
+        ? selectedBoard!.imageUrl
+        : `${apiBaseUrl}${selectedBoard!.imageUrl}`
+    }
+    
+    img.src = imageUrl
+  }, [selectedBoardId, sampleBoards, layers.baseImageShown, scanImages, boardSide])
 
   const getCanvasCoordinates = (e: React.MouseEvent) => {
     const canvas = annotationCanvasRef.current

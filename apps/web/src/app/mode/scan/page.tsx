@@ -431,9 +431,11 @@ export default function ScanModePage() {
                     onClick={() => {
                       const frontUrl = capturedFrames.front!.toDataURL('image/jpeg')
                       const backUrl = capturedFrames.back!.toDataURL('image/jpeg')
-                      router.push(
-                        `/mode/study?frontImage=${encodeURIComponent(frontUrl)}&backImage=${encodeURIComponent(backUrl)}&boardId=${scanState.boardIdDetected}`
-                      )
+                      // Store images in sessionStorage to avoid URL length limits
+                      sessionStorage.setItem('scanFrontImage', frontUrl)
+                      sessionStorage.setItem('scanBackImage', backUrl)
+                      sessionStorage.setItem('scanBoardId', scanState.boardIdDetected || '')
+                      router.push('/mode/study?fromScan=true')
                     }}
                     className="w-full btn-secondary py-3 font-semibold"
                   >
