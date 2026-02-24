@@ -29,11 +29,14 @@ export interface Transform {
   scale: number
 }
 
+export type StitchProgressCallback = (status: string, progress: number) => void
+
 export class BoardStitcher {
   private frames: StitchFrame[] = []
   private composition: HTMLCanvasElement | null = null
   private transforms: Map<string, Transform> = new Map()
   private overlaps: OverlapRegion[] = []
+  private progressCallback: StitchProgressCallback | null = null
 
   addFrame(frame: StitchFrame): void {
     // Validate frame quality
@@ -91,7 +94,7 @@ export class BoardStitcher {
     side: 'left' | 'right',
     width: number
   ): Uint8ClampedArray | null {
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) return null
 
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
@@ -180,6 +183,19 @@ export class BoardStitcher {
   }
 
   /**
+   * Set progress callback for UI updates
+   */
+  setProgressCallback(callback: StitchProgressCallback | null): void {
+    this.progressCallback = callback
+  }
+
+  private updateProgress(status: string, progress: number): void {
+    if (this.progressCallback) {
+      this.progressCallback(status, progress)
+    }
+  }
+
+  /**
    * Stitch all collected frames into a single panoramic image
    */
   async stitch(): Promise<HTMLCanvasElement> {
@@ -193,12 +209,15 @@ export class BoardStitcher {
     }
 
     // Detect overlaps between adjacent frames
+    this.updateProgress('Detecting overlaps...', 10)
     this.overlaps = []
     for (let i = 0; i < this.frames.length - 1; i++) {
       const overlap = this.detectOverlap(this.frames[i], this.frames[i + 1])
       if (overlap) {
         this.overlaps.push(overlap)
       }
+      const overlapProgress = 10 + (i / (this.frames.length - 1)) * 20
+      this.updateProgress(`Detecting overlaps... (${i + 1}/${this.frames.length - 1})`, overlapProgress)
     }
 
     // Calculate composition size
@@ -220,7 +239,7 @@ export class BoardStitcher {
     composition.width = totalWidth + padding * 2
     composition.height = maxHeight + padding * 2
 
-    const ctx = composition.getContext('2d', { alpha: false })
+    const ctx = composition.getContext('2d', { alpha: false, willReadFrequently: false })
     if (!ctx) {
       throw new Error('Failed to get canvas context')
     }
@@ -228,6 +247,7 @@ export class BoardStitcher {
     // Enable high-quality rendering
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
+    this.updateProgress('Compositing frames...', 35)
 
     // Fill with white background
     ctx.fillStyle = 'white'
@@ -237,6 +257,8 @@ export class BoardStitcher {
     let currentX = padding
 
     for (let i = 0; i < this.frames.length; i++) {
+      const compositeProgress = 35 + (i / this.frames.length) * 50
+      this.updateProgress(`Compositing frames... (${i + 1}/${this.frames.length})`, compositeProgress)
       const frame = this.frames[i]
       const transform: Transform = {
         tx: currentX,
@@ -268,8 +290,10 @@ export class BoardStitcher {
     }
 
     // Crop to actual content (remove excess white space)
+    this.updateProgress('Finalizing...', 90)
     const cropped = this.cropToContent(composition)
     this.composition = cropped
+    this.updateProgress('Complete', 100)
 
     return cropped
   }
@@ -278,7 +302,7 @@ export class BoardStitcher {
    * Crop canvas to remove white background
    */
   private cropToContent(canvas: HTMLCanvasElement): HTMLCanvasElement {
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) return canvas
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)

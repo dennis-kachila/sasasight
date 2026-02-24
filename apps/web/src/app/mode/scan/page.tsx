@@ -18,6 +18,8 @@ interface ScanState {
   status: 'idle' | 'capturing' | 'stitching' | 'uploading' | 'complete' | 'error'
   errorMessage?: string
   cameraError?: string
+  stitchStatus?: string
+  stitchProgress?: number
 }
 
 interface CapturedFrames {
@@ -89,10 +91,22 @@ export default function ScanModePage() {
       ...prev,
       isScanning: false,
       status: 'stitching',
+      stitchStatus: 'Preparing frames...',
+      stitchProgress: 0,
     }))
 
     try {
       const stitcher = stitchersRef.current[scanState.side]
+      
+      // Set up progress callback
+      stitcher.setProgressCallback((status: string, progress: number) => {
+        setScanState((prev) => ({
+          ...prev,
+          stitchStatus: status,
+          stitchProgress: progress,
+        }))
+      })
+
       const stitchedCanvas = await stitcher.stitch()
       const quality = stitcher.getQuality()
 
@@ -100,6 +114,8 @@ export default function ScanModePage() {
         ...prev,
         stitchQuality: quality,
         status: 'idle',
+        stitchStatus: undefined,
+        stitchProgress: undefined,
       }))
 
       setCapturedFrames((prev) => ({
@@ -112,6 +128,8 @@ export default function ScanModePage() {
         ...prev,
         status: 'error',
         errorMessage: 'Stitching failed. Try again.',
+        stitchStatus: undefined,
+        stitchProgress: undefined,
       }))
     }
   }, [scanState.side])
@@ -494,6 +512,45 @@ export default function ScanModePage() {
           </div>
         )}
       </div>
+
+      {/* Stitching Progress Modal */}
+      {scanState.status === 'stitching' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-sm border border-gray-700 shadow-2xl">
+            <div className="flex items-center justify-center mb-6">
+              <div className="animate-spin">
+                <svg className="w-8 h-8 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+                  <path d="M12 2a10 10 0 010 20" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              </div>
+              <span className="ml-3 text-lg font-semibold text-white">Processing...</span>
+            </div>
+
+            <p className="text-center text-gray-300 mb-4 h-6">
+              {scanState.stitchStatus || 'Preparing frames...'}
+            </p>
+
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-4 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${scanState.stitchProgress || 0}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-gray-400">
+              <span>{scanState.stitchProgress || 0}%</span>
+              <span className="text-cyan-400 font-mono text-xs">
+                {scanState.side === 'front' ? 'Front' : 'Back'} side
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-500 text-center mt-4">
+              Depending on frames collected, this may take 5-15 seconds
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
