@@ -292,17 +292,20 @@ export default function ScanModePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="border-b border-gray-700 bg-gray-900 bg-opacity-50 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">Scan Mode</h1>
+    <div className="min-h-screen bg-gray-900 pb-24 lg:pb-0">
+      <header className="border-b border-gray-700 bg-gray-900 bg-opacity-70 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 lg:py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl lg:text-2xl font-bold text-white">Scan Mode</h1>
+            <p className="text-xs lg:text-sm text-gray-400">Phone camera optimized board capture</p>
+          </div>
           <Link href="/" className="text-gray-400 hover:text-white text-sm">
             Back
           </Link>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 py-4 lg:px-4 lg:py-8">
         {scanComplete && scanId ? (
           <div className="max-w-md mx-auto text-center">
             <div className="bg-green-900 bg-opacity-30 border border-green-500 rounded-lg p-8 mb-6">
@@ -320,8 +323,8 @@ export default function ScanModePage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1 space-y-6">
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:gap-6">
+            <div className="order-2 lg:order-1 lg:col-span-1 space-y-4 lg:space-y-6">
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Board Sides</h2>
 
@@ -451,21 +454,21 @@ export default function ScanModePage() {
               )}
             </div>
 
-            <div className="lg:col-span-2">
+            <div className="order-1 lg:order-2 lg:col-span-2">
               {scanState.isScanning && !scanState.cameraError ? (
                 <div className="relative">
                   <CameraView
                     onFrame={handleFrameCapture}
                     onError={handleCameraError}
-                    width={640}
-                    height={480}
+                    width={960}
+                    height={1280}
                     facingMode="environment"
                     captureFps={8}
                   />
 
-                  <div className="absolute top-4 left-4 right-4 bg-black bg-opacity-50 p-4 rounded-lg">
+                  <div className="absolute top-3 left-3 right-3 lg:top-4 lg:left-4 lg:right-4 bg-black bg-opacity-60 p-3 lg:p-4 rounded-lg">
                     <p className="text-cyan-400 font-semibold">Scanning {scanState.side} side</p>
-                    <p className="text-gray-300 text-sm mt-1">Frames: {scanState.framesCollected}</p>
+                    <p className="text-gray-300 text-xs lg:text-sm mt-1">Frames: {scanState.framesCollected}</p>
                   </div>
                 </div>
               ) : scanState.cameraError ? (
@@ -488,7 +491,7 @@ export default function ScanModePage() {
                   </div>
                 </div>
               ) : capturedFrames.front || capturedFrames.back ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                   {capturedFrames.front && (
                     <div>
                       <h3 className="text-sm font-semibold text-gray-300 mb-2">Front Side</h3>
@@ -503,7 +506,7 @@ export default function ScanModePage() {
                   )}
                 </div>
               ) : (
-                <div className="bg-gray-800 rounded-lg aspect-video flex items-center justify-center border border-gray-700">
+                <div className="bg-gray-800 rounded-lg min-h-[52vh] lg:aspect-video lg:min-h-0 flex items-center justify-center border border-gray-700">
                   <div className="text-center">
                     <p className="text-gray-400 text-lg">Select a side to begin scanning</p>
                     <p className="text-gray-500 text-sm mt-2">Keep camera steady and move slowly</p>
@@ -514,6 +517,19 @@ export default function ScanModePage() {
           </div>
         )}
       </div>
+
+      {scanState.isScanning && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur px-3 py-3">
+          <div className="flex items-center gap-2">
+            <button onClick={pauseScan} className="flex-1 btn-secondary py-3 text-base">
+              Pause
+            </button>
+            <button onClick={stopScan} className="flex-1 btn-primary py-3 text-base">
+              Stop & Stitch
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stitching Progress Modal */}
       {scanState.status === 'stitching' && (

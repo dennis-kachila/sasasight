@@ -74,6 +74,7 @@ export default function StudyModePage() {
   const [processedImageStages, setProcessedImageStages] = useState<any[]>([])
   const [showProcessingPanel, setShowProcessingPanel] = useState(false)
   const [viewingStage, setViewingStage] = useState<any>(null)
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   const boardKey = `${selectedBoardId}-${boardSide}`
 
   const colors = [
@@ -217,6 +218,15 @@ export default function StudyModePage() {
       }
     }
     loadSampleBoards()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(min-width: 1024px)')
+    const updateViewport = () => setIsDesktop(mediaQuery.matches)
+    updateViewport()
+    mediaQuery.addEventListener('change', updateViewport)
+    return () => mediaQuery.removeEventListener('change', updateViewport)
   }, [])
 
   // Redraw when annotations change - this ensures persisted drawings stay visible
@@ -881,6 +891,30 @@ export default function StudyModePage() {
       container.scrollLeft = 0
       container.scrollTop = 0
     }, 0)
+  }
+
+  if (isDesktop === null) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-400 text-sm">Loading Study Mode...</p>
+      </div>
+    )
+  }
+
+  if (!isDesktop) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-xl border border-gray-700 bg-gray-800 p-6 text-center">
+          <h1 className="text-xl font-bold text-white mb-3">Study Mode is Desktop Only</h1>
+          <p className="text-gray-300 text-sm mb-6">
+            Use Find and Scan on your phone camera. Open Study Mode on a laptop or desktop for detailed annotation.
+          </p>
+          <Link href="/" className="inline-block btn-primary py-2 px-4">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

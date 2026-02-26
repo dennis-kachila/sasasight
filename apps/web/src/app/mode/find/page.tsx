@@ -82,22 +82,22 @@ export default function FindModePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 pb-24 lg:pb-0">
       {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-900 bg-opacity-50 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="border-b border-gray-700 bg-gray-900 bg-opacity-70 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 lg:px-6 lg:py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-cyan-400">Find Mode</h1>
-            <p className="text-gray-400 text-sm">Locate components by reference designator or part number</p>
+            <h1 className="text-xl lg:text-2xl font-bold text-cyan-400">Find Mode</h1>
+            <p className="text-gray-400 text-xs lg:text-sm">Mobile camera optimized component finding</p>
           </div>
-          <Link href="/" className="text-gray-400 hover:text-white">
+          <Link href="/" className="text-gray-400 hover:text-white text-sm">
             ← Back
           </Link>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto px-3 py-4 lg:px-6 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Search Panel */}
           <div className="card col-span-1">
             <h2 className="text-lg font-semibold mb-4">Search</h2>
@@ -111,7 +111,7 @@ export default function FindModePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
                 placeholder="e.g., R120, U7, C33"
-                className="input-field"
+                className="input-field text-base py-3"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !isScanning) {
                     startScanning()
@@ -124,14 +124,14 @@ export default function FindModePage() {
               {!isScanning ? (
                 <button
                   onClick={startScanning}
-                  className="flex-1 btn-primary"
+                  className="flex-1 btn-primary py-3 text-base"
                 >
                   Start Scanning
                 </button>
               ) : (
                 <button
                   onClick={stopScanning}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors"
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors text-base"
                 >
                   Stop Scanning
                 </button>
@@ -205,11 +205,11 @@ export default function FindModePage() {
           {/* Camera Feed */}
           <div className="col-span-1 lg:col-span-2">
             {isScanning ? (
-              <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
+              <div className="relative bg-black rounded-lg overflow-hidden min-h-[58vh] lg:min-h-0 lg:aspect-video">
                 <CameraView
                   onFrame={handleFrameCapture}
-                  width={640}
-                  height={480}
+                  width={960}
+                  height={1280}
                   facingMode="environment"
                   captureFps={10}
                 />
@@ -339,11 +339,11 @@ export default function FindModePage() {
                 )}
 
                 {/* HUD Info */}
-                <div className="absolute top-4 left-4 right-4 bg-black bg-opacity-60 backdrop-blur p-4 rounded-lg border border-cyan-500 border-opacity-30">
+                <div className="absolute top-3 left-3 right-3 lg:top-4 lg:left-4 lg:right-4 bg-black bg-opacity-60 backdrop-blur p-3 lg:p-4 rounded-lg border border-cyan-500 border-opacity-30">
                   <p className="text-cyan-400 font-semibold">
                     Searching for: <span className="text-white">{searchQuery}</span>
                   </p>
-                  <p className="text-gray-300 text-sm mt-1">
+                  <p className="text-gray-300 text-xs lg:text-sm mt-1">
                     {highlightBox
                       ? '✓ Component located'
                       : 'Move the camera to locate the component'}
@@ -351,7 +351,7 @@ export default function FindModePage() {
                 </div>
 
                 {/* Processing indicator */}
-                <div className="absolute bottom-4 left-4 bg-black bg-opacity-60 backdrop-blur px-3 py-2 rounded text-xs text-gray-300 border border-gray-600">
+                <div className="absolute bottom-3 left-3 lg:bottom-4 lg:left-4 bg-black bg-opacity-60 backdrop-blur px-3 py-2 rounded text-xs text-gray-300 border border-gray-600">
                   {isOcrProcessing ? (
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
@@ -366,7 +366,7 @@ export default function FindModePage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 rounded-lg aspect-video flex flex-col items-center justify-center border border-gray-700 gap-4">
+              <div className="bg-gray-800 rounded-lg min-h-[52vh] lg:aspect-video lg:min-h-0 flex flex-col items-center justify-center border border-gray-700 gap-4">
                 <div className="text-center">
                   <p className="text-gray-400 text-lg">Enter a reference designator and start scanning</p>
                   <p className="text-gray-500 text-sm mt-2">e.g., R120, U10, C5, D2</p>
@@ -377,6 +377,27 @@ export default function FindModePage() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur px-3 py-3">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+            placeholder="Ref (R120, U7...)"
+            className="input-field text-sm py-2"
+          />
+          {!isScanning ? (
+            <button onClick={startScanning} className="btn-primary py-2 px-4 whitespace-nowrap">
+              Start
+            </button>
+          ) : (
+            <button onClick={stopScanning} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors whitespace-nowrap">
+              Stop
+            </button>
+          )}
         </div>
       </div>
     </div>
